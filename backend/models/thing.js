@@ -8,4 +8,4 @@ const thingSchema = mongoose.Schema({ //use object Schema to create a schema of 
   price: { type: Number, required: true }, //type Number for a price
 });
 
-module.exports = mongoose.model('thing', thingSchema); //export the module thingSchema in 'thing' as a model to create database
+module.exports = mongoose.model('Thing', thingSchema); //export the module thingSchema in 'thing' as a model to create database

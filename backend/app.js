@@ -6,7 +6,10 @@ const mongoose = require('mongoose'); //import mongoose
 
 const Thing = require('./models/thing'); //import new Mongoose modele that created in thing.js
 
-mongoose.connect('mongodb+srv://desulisl31:xxx@desuliscluster.qrhjp.mongodb.net/myFirstDatabase?retryWrites=true&w=majority',
+const fs = require('fs');
+const password = fs.readFileSync('./password.txt', {encoding:'utf8', flag:'r'});
+
+mongoose.connect('mongodb+srv://desulisl31:' + password + '@desuliscluster.qrhjp.mongodb.net/myFirstDatabase?retryWrites=true&w=majority',
   { useNewUrlParser: true,
     useUnifiedTopology: true })
   .then(() => console.log('Connexion à MongoDB réussie !'))
@@ -33,26 +36,29 @@ app.post('/api/stuff', (req, res, next) => { //instance 'Thing'
     .catch(error => res.status(400).json({ error })); //send and error if occured with code 400
 });
 
-app.use('/api/stuff', (req, res, next) => { // second middleware : route .use as a string to define a URL that will be asked by frontend
-  const stuff = [ //middleware that send a response in the form of table
-    {
-      _id: 'oeihfzeoi',
-      title: 'Mon premier objet',
-      description: 'Les infos de mon premier objet',
-      imageUrl: 'https://cdn.pixabay.com/photo/2019/06/11/18/56/camera-4267692_1280.jpg',
-      price: 4900,
-      userId: 'qsomihvqios',
-    },
-    {
-      _id: 'oeihfzeomoihi',
-      title: 'Mon deuxième objet',
-      description: 'Les infos de mon deuxième objet',
-      imageUrl: 'https://cdn.pixabay.com/photo/2019/06/11/18/56/camera-4267692_1280.jpg',
-      price: 2900,
-      userId: 'qsomihvqios',
-    },
-  ];
-  res.status(200).json(stuff); //object response in form of JSON and code 200 for successfull request
+app.put('/api/stuff/:id', (req, res, next) => { //Put request to modify the database
+  Thing.updateOne({ _id: req.params.id }, { ...req.body, _id: req.params.id }) //find the same _id as parameter id, and all the body content also with same id to make sure
+    .then(() => res.status(200).json({ message: 'Objet modifié !'}))
+    .catch(error => res.status(400).json({ error }));
 });
+
+app.delete('/api/stuff/:id', (req, res, next) => { //Delete request
+  Thing.deleteOne({ _id: req.params.id }) //delete object that has same id as parameter id
+    .then(() => res.status(200).json({ message: 'Objet supprimé !'}))
+    .catch(error => res.status(400).json({ error }));
+});
+
+app.get('/api/stuff/:id', (req, res, next) => { //:id as get request parameter to show in url and it is a dynamic segment
+  Thing.findOne({ _id: req.params.id }) //findOne method to find a unique Thing that has same _id. Comparison _id and parameter id
+    .then(thing => res.status(200).json(thing))
+    .catch(error => res.status(404).json({ error })); //code 404 not such a file found
+});
+
+app.get('/api/stuff', (req, res, next) => { // second middleware : route .use as a string to define a URL that will be asked by frontend
+  Thing.find() //find method to send back the respond in the form of table with all elements of Things
+    .then(things => res.status(200).json(things)) //promise code 200
+    .catch(error => res.status(400).json({ error })); //error
+});
+
 
 module.exports = app;
