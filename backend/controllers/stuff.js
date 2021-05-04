@@ -1,27 +1,17 @@
 const Thing = require('../models/thing');
+const fs = require('fs'); //function file system that allow to modify the file system like delete
 
 //export all function that was in route.js
 exports.createThing = (req, res, next) => { 
-  const thing = new Thing({
-    title: req.body.title,
-    description: req.body.description,
-    imageUrl: req.body.imageUrl,
-    price: req.body.price,
-    userId: req.body.userId
+  const thingObject = JSON.parse(req.body.thing); //parse Json to get object utilisable
+  delete thingObject._id;
+  const thing = new Thing({ //a chain request that converted from Thing
+    ...thingObject,
+    imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}` //protocol : get a segment from http, add // and a server host, folder image and filename
   });
-  thing.save().then(
-    () => {
-      res.status(201).json({
-        message: 'Post saved successfully!'
-      });
-    }
-  ).catch(
-    (error) => {
-      res.status(400).json({
-        error: error
-      });
-    }
-  );
+  thing.save()
+    .then(() => res.status(201).json({ message: 'Objet enregistré !'}))
+    .catch(error => res.status(400).json({ error }));
 };
 
 exports.getOneThing = (req, res, next) => {
@@ -41,43 +31,27 @@ exports.getOneThing = (req, res, next) => {
 };
 
 exports.modifyThing = (req, res, next) => {
-  const thing = new Thing({
-    _id: req.params.id,
-    title: req.body.title,
-    description: req.body.description,
-    imageUrl: req.body.imageUrl,
-    price: req.body.price,
-    userId: req.body.userId
-  });
-  Thing.updateOne({_id: req.params.id}, thing).then(
-    () => {
-      res.status(201).json({
-        message: 'Thing updated successfully!'
-      });
-    }
-  ).catch(
-    (error) => {
-      res.status(400).json({
-        error: error
-      });
-    }
-  );
+  const thingObject = req.file ? // file ? exist or not
+    {
+      ...JSON.parse(req.body.thing), // if yes, parse the object and create as createThing
+      imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
+    } : { ...req.body }; //if not create one
+  Thing.updateOne({ _id: req.params.id }, { ...thingObject, _id: req.params.id })
+    .then(() => res.status(200).json({ message: 'Objet modifié !'}))
+    .catch(error => res.status(400).json({ error }));
 };
 
 exports.deleteThing = (req, res, next) => {
-  Thing.deleteOne({_id: req.params.id}).then(
-    () => {
-      res.status(200).json({
-        message: 'Deleted!'
+  Thing.findOne({ _id: req.params.id }) //id as a parameter to find a thing correspondance to request
+    .then(thing => {
+      const filename = thing.imageUrl.split('/images/')[1]; //split image name and take second one after /images/ so [1]
+      fs.unlink(`images/${filename}`, () => { //unlink the value that we split from image name
+        Thing.deleteOne({ _id: req.params.id }) //and delete it
+          .then(() => res.status(200).json({ message: 'Objet supprimé !'}))
+          .catch(error => res.status(400).json({ error }));
       });
-    }
-  ).catch(
-    (error) => {
-      res.status(400).json({
-        error: error
-      });
-    }
-  );
+    })
+    .catch(error => res.status(500).json({ error }));
 };
 
 exports.getAllStuff = (req, res, next) => {
